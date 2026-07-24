@@ -6,8 +6,8 @@ author: ruiduobao
 license: MIT-0
 description: |
   Download ISRIC SoilGrids soil property data including pH, organic carbon, sand/silt/clay
-  fractions, bulk density, and cation exchange capacity. Supports point and bbox queries
-  across 6 standard depth layers at 250m resolution.
+  fractions, bulk density, and cation exchange capacity. Supports point queries
+  (and bbox center-point queries) across 6 standard depth layers at 250m resolution.
 runtime: python>=3.8
 tags: [gis, remote-sensing, soil, agriculture, isric, soilgrids]
 ---
@@ -26,7 +26,7 @@ using machine learning models trained on global soil profile databases and envir
 
 - **Soil properties**: pH(H₂O), organic carbon, sand/silt/clay fractions, bulk density, CEC, etc.
 - **6 depth layers**: 0-5cm, 5-15cm, 15-30cm, 30-60cm, 60-100cm, 100-200cm
-- **Point and bbox queries**: single location or regional extent
+- **Point and bbox center-point queries**: single location or bbox center
 - **Output formats**: CSV, JSON
 - **No API key required**: completely free and open
 - **Property coverage info**: shows which depths are available for each property
@@ -54,7 +54,7 @@ python scripts/soilgrids_download.py query \
   --lat 39.9042 --lon 116.4074 \
   --output beijing_ph.csv
 
-# Query multiple properties for a region
+# Query multiple properties for a region (uses bbox center point)
 python scripts/soilgrids_download.py query \
   --property phh2o,soc,sand,silt,clay \
   --bbox 73 18 135 54 \
@@ -201,7 +201,7 @@ Use P50 as the best estimate; P5–P95 range indicates prediction uncertainty.
 ```bash
 # Query multiple points from a CSV
 while IFS=',' read -r id lat lon; do
-  python scripts/soilgrids_download.py point --lat $lat --lon $lon     --property clay --depth 0-5cm --output clay_${id}.csv
+  python scripts/soilgrids_download.py query --lat $lat --lon $lon --property clay --depth 0-5cm --output clay_${id}.csv
   sleep 0.5
 done < points.csv
 ```
@@ -223,32 +223,23 @@ jobs:
           python-version: '3.11'
       - run: pip install requests
       - run: |
-          python scripts/soilgrids_download.py bbox \
-            --bbox 73 18 135 54 --property phh2o \
+          python scripts/soilgrids_download.py query \
+            --lat 39.9 --lon 116.4 --property phh2o \
             --depth 0-5cm --output china_ph.csv
 ```
 
 ### PostgreSQL/PostGIS Import
 ```bash
-python scripts/soilgrids_download.py point --lat 39.9 --lon 116.4   --property clay --depth 0-5cm --output soil.csv
+python scripts/soilgrids_download.py query --lat 39.9 --lon 116.4 --property clay --depth 0-5cm --output soil.csv
 
 psql -d gis_db -c "\COPY soil_samples(id, lat, lon, clay_pct) FROM 'soil.csv' CSV HEADER"
-```
-
-### GIS Integration (GDAL/rasterio)
-```python
-import rasterio
-# SoilGrids REST API returns GeoTIFF for bbox queries
-# Open directly with rasterio:
-with rasterio.open('soilgrids_clay.tif') as src:
-    clay_data = src.read(1)
-    profile = src.profile
 ```
 
 ### Performance Tips
 - Add `sleep 0.5` between point queries to respect rate limits
 - Use `--format csv` for tabular analysis, `--format json` for web apps
 - Unit conversion: phh2o × 0.1 = pH in standard units; bdv (bulk density) in g/cm³
+- For bbox queries, the tool calculates the center point and queries that location
 
 ---
 
@@ -260,7 +251,7 @@ with rasterio.open('soilgrids_clay.tif') as src:
 
 - **土壤属性**：pH(H₂O)、有机碳、砂粒/粉粒/粘粒含量、容重、CEC 等
 - **6 个标准深度层**：0-5cm, 5-15cm, 15-30cm, 30-60cm, 60-100cm, 100-200cm
-- **点查询和区域查询**：单点经纬度或边界框
+- **点查询和区域中心点查询**：单点经纬度或边界框中心点
 - **输出格式**：CSV、JSON
 - **无需 API 密钥**：完全免费开放
 - **属性覆盖信息**：显示每个属性在哪些深度可用
@@ -288,7 +279,7 @@ python scripts/soilgrids_download.py query \
   --lat 39.9042 --lon 116.4074 \
   --output beijing_ph.csv
 
-# 查询中国区域多种土壤属性
+# 查询中国区域多种土壤属性（使用边界框中心点）
 python scripts/soilgrids_download.py query \
   --property phh2o,soc,sand,silt,clay \
   --bbox 73 18 135 54 \

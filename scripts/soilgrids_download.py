@@ -215,28 +215,30 @@ def cmd_query(args):
     depths = validate_depths(args.depth) if args.depth else None
 
     # Validate spatial input
+    bbox = None
     if args.lat is not None and args.lon is not None:
         validate_latlon(args.lat, args.lon)
         lat, lon = args.lat, args.lon
     elif args.bbox:
         west, south, east, north = validate_bbox(args.bbox)
-        # Use center for point query
-        lat = (south + north) / 2
-        lon = (west + east) / 2
-        print(f"Note: Using center of bbox ({lat:.4f}, {lon:.4f}) for point query.")
-        print("      SoilGrids API returns point data; bbox is used for center point only.")
+        bbox = (west, south, east, north)
+        print(f"Querying SoilGrids for bbox: west={west}, south={south}, east={east}, north={north}")
+        if depths:
+            print(f"  Depths: {', '.join(depths)}")
+        data = fetch_soilgrids_bbox(properties, bbox, depths)
+        records = parse_point_response(data, properties, (south + north) / 2, (west + east) / 2)
     else:
         print("Error: Provide either --lat/--lon or --bbox")
         sys.exit(1)
 
-    # Fetch data
-    print(f"Querying SoilGrids for: {', '.join(properties)}")
-    print(f"  Location: ({lat:.4f}, {lon:.4f})")
-    if depths:
-        print(f"  Depths: {', '.join(depths)}")
-
-    data = fetch_soilgrids_point(properties, lat, lon, depths)
-    records = parse_point_response(data, properties, lat, lon)
+    # Fetch data for point query
+    if not bbox:
+        print(f"Querying SoilGrids for: {', '.join(properties)}")
+        print(f"  Location: ({lat:.4f}, {lon:.4f})")
+        if depths:
+            print(f"  Depths: {', '.join(depths)}")
+        data = fetch_soilgrids_point(properties, lat, lon, depths)
+        records = parse_point_response(data, properties, lat, lon)
 
     if not records:
         print("No data returned.")
