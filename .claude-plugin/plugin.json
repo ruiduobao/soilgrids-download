@@ -1,0 +1,9 @@
+{
+  "name": "soilgrids-download",
+  "description": "GIS skill for soilgrids-download",
+  "version": "0.1.0",
+  "author": "ruiduobao",
+  "skills": [
+    "soilgrids-download"
+  ]
+}
