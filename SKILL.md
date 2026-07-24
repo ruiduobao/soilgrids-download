@@ -1,15 +1,13 @@
 ---
-name: soilgrids-download
-display_name: SoilGrids 土壤数据下载
-version: 0.1.0
-author: ruiduobao
-license: MIT-0
-description: |
-  Download ISRIC SoilGrids soil property data including pH, organic carbon, sand/silt/clay
+description: 'Download ISRIC SoilGrids soil property data including pH, organic carbon,
+  sand/silt/clay
+
   fractions, bulk density, and cation exchange capacity. Supports point queries
+
   (and bbox center-point queries) across 6 standard depth layers at 250m resolution.
-runtime: python>=3.8
-tags: [gis, remote-sensing, soil, agriculture, isric, soilgrids]
+
+  '
+name: soilgrids-download
 ---
 
 # SoilGrids Data Download
@@ -49,26 +47,26 @@ using machine learning models trained on global soil profile databases and envir
 
 ```bash
 # Query soil pH at a point
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property phh2o \
   --lat 39.9042 --lon 116.4074 \
   --output beijing_ph.csv
 
 # Query multiple properties for a region (uses bbox center point)
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property phh2o,soc,sand,silt,clay \
   --bbox 73 18 135 54 \
   --depth 0-5,5-15 \
   --output china_soil.json --format json
 
 # List all available properties
-python scripts/soilgrids_download.py list-properties
+python scripts\soilgrids_download.py list-properties
 
 # List available depth layers
-python scripts/soilgrids_download.py list-depths
+python scripts\soilgrids_download.py list-depths
 
 # Query organic carbon stock
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property ocs \
   --lat 31.2304 --lon 121.4737 \
   --output shanghai_carbon.csv
@@ -201,7 +199,7 @@ Use P50 as the best estimate; P5–P95 range indicates prediction uncertainty.
 ```bash
 # Query multiple points from a CSV
 while IFS=',' read -r id lat lon; do
-  python scripts/soilgrids_download.py query --lat $lat --lon $lon --property clay --depth 0-5cm --output clay_${id}.csv
+  python scripts\soilgrids_download.py query --lat $lat --lon $lon --property clay --depth 0-5cm --output clay_${id}.csv
   sleep 0.5
 done < points.csv
 ```
@@ -223,14 +221,14 @@ jobs:
           python-version: '3.11'
       - run: pip install requests
       - run: |
-          python scripts/soilgrids_download.py query \
+          python scripts\soilgrids_download.py query \
             --lat 39.9 --lon 116.4 --property phh2o \
             --depth 0-5cm --output china_ph.csv
 ```
 
 ### PostgreSQL/PostGIS Import
 ```bash
-python scripts/soilgrids_download.py query --lat 39.9 --lon 116.4 --property clay --depth 0-5cm --output soil.csv
+python scripts\soilgrids_download.py query --lat 39.9 --lon 116.4 --property clay --depth 0-5cm --output soil.csv
 
 psql -d gis_db -c "\COPY soil_samples(id, lat, lon, clay_pct) FROM 'soil.csv' CSV HEADER"
 ```
@@ -274,26 +272,26 @@ psql -d gis_db -c "\COPY soil_samples(id, lat, lon, clay_pct) FROM 'soil.csv' CS
 
 ```bash
 # 查询北京某点土壤 pH
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property phh2o \
   --lat 39.9042 --lon 116.4074 \
   --output beijing_ph.csv
 
 # 查询中国区域多种土壤属性（使用边界框中心点）
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property phh2o,soc,sand,silt,clay \
   --bbox 73 18 135 54 \
   --depth 0-5,5-15 \
   --output china_soil.json --format json
 
 # 列出所有可用属性
-python scripts/soilgrids_download.py list-properties
+python scripts\soilgrids_download.py list-properties
 
 # 列出可用深度层
-python scripts/soilgrids_download.py list-depths
+python scripts\soilgrids_download.py list-depths
 
 # 查询上海有机碳储量
-python scripts/soilgrids_download.py query \
+python scripts\soilgrids_download.py query \
   --property ocs \
   --lat 31.2304 --lon 121.4737 \
   --output shanghai_carbon.csv
