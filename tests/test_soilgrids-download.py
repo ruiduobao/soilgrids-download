@@ -155,6 +155,112 @@ class TestCLI(unittest.TestCase):
         with patch("sys.argv", ["soilgrids-download", "list-depths"]):
             sgd.main()
 
+    def test_query_subcommand_help_shows_verbose(self):
+        """`query --help` should mention the new --verbose / -v flag."""
+        import subprocess
+        script = str(Path(__file__).parent.parent / "scripts" / "soilgrids_download.py")
+        result = subprocess.run(
+            [sys.executable, script, "query", "--help"],
+            capture_output=True, text=True, timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--verbose", result.stdout)
+        self.assertIn("-v", result.stdout)
+
+
+class TestVerbose(unittest.TestCase):
+    """Tests for --verbose flag on the query subcommand."""
+
+    def _fake_response(self):
+        return {
+            "properties": {
+                "layers": [
+                    {
+                        "name": "phh2o",
+                        "unit_measure": {"mapped_units": "pH x10"},
+                        "depths": [
+                            {
+                                "label": "0-5cm",
+                                "values": {"mean": 72, "Q0.05": 65, "Q0.5": 72, "Q0.95": 79},
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+
+    @patch("soilgrids_download.fetch_soilgrids_point")
+    def test_verbose_off_by_default(self, mock_fetch):
+        """Without --verbose, no [verbose] log lines should be emitted to stderr."""
+        import io
+        from contextlib import redirect_stderr
+        mock_fetch.return_value = self._fake_response()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            out_path = f.name
+        try:
+            args = sgd.argparse.Namespace(
+                preset=None, property="phh2o",
+                place=None, lat=39.9, lon=116.4, bbox=None,
+                depth=None, output=out_path, format="csv",
+                qa=False, verbose=False,
+            )
+            err = io.StringIO()
+            with redirect_stderr(err):
+                sgd.cmd_query(args)
+            out = err.getvalue()
+            self.assertNotIn("[verbose]", out)
+        finally:
+            os.unlink(out_path)
+
+    @patch("soilgrids_download.fetch_soilgrids_point")
+    def test_verbose_emits_logs(self, mock_fetch):
+        """With --verbose=True, [verbose] log lines should appear on stderr."""
+        import io
+        from contextlib import redirect_stderr
+        mock_fetch.return_value = self._fake_response()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            out_path = f.name
+        try:
+            args = sgd.argparse.Namespace(
+                preset=None, property="phh2o",
+                place=None, lat=39.9, lon=116.4, bbox=None,
+                depth=None, output=out_path, format="csv",
+                qa=False, verbose=True,
+            )
+            err = io.StringIO()
+            with redirect_stderr(err):
+                sgd.cmd_query(args)
+            out = err.getvalue()
+            self.assertIn("[verbose]", out)
+            self.assertIn("resolved:", out)
+            self.assertIn("parsed 1 record", out)
+            self.assertIn("wrote 1 record", out)
+        finally:
+            os.unlink(out_path)
+
+    @patch("soilgrids_download.fetch_soilgrids_point")
+    def test_verbose_short_flag(self, mock_fetch):
+        """The short -v flag should also enable verbose mode."""
+        import io
+        from contextlib import redirect_stderr
+        mock_fetch.return_value = self._fake_response()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            out_path = f.name
+        try:
+            args = sgd.argparse.Namespace(
+                preset=None, property="phh2o",
+                place=None, lat=39.9, lon=116.4, bbox=None,
+                depth=None, output=out_path, format="csv",
+                qa=False, verbose=True,
+            )
+            err = io.StringIO()
+            with redirect_stderr(err):
+                sgd.cmd_query(args)
+            out = err.getvalue()
+            self.assertIn("[verbose]", out)
+        finally:
+            os.unlink(out_path)
+
 
 if __name__ == "__main__":
     unittest.main()

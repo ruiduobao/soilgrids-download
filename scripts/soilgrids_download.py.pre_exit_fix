@@ -166,7 +166,7 @@ def validate_depths(depths):
     return valid
 
 # ── API Functions ──────────────────────────────────────────────────────────────
-def fetch_soilgrids_point(properties, lat, lon, depths=None, verbose: bool = False):
+def fetch_soilgrids_point(properties, lat, lon, depths=None):
     """Fetch soil data for a single point."""
     params = {
         "lon": lon,
@@ -176,14 +176,8 @@ def fetch_soilgrids_point(properties, lat, lon, depths=None, verbose: bool = Fal
     if depths:
         params["depth"] = ",".join(depths)
 
-    if verbose:
-        print(f"[verbose] GET {PROFILES_ENDPOINT} params={params} (timeout=60s)",
-              file=sys.stderr)
     try:
         resp = requests.get(PROFILES_ENDPOINT, params=params, timeout=60)
-        if verbose:
-            print(f"[verbose] <- HTTP {resp.status_code} ({len(resp.content)} bytes)",
-                  file=sys.stderr)
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         raise RuntimeError("Request timed out. Try fewer properties or check your connection.")
@@ -232,7 +226,7 @@ def parse_point_response(data, properties, lat, lon):
 
     return records
 
-def fetch_soilgrids_bbox(properties, bbox, depths=None, verbose: bool = False):
+def fetch_soilgrids_bbox(properties, bbox, depths=None):
     """Fetch soil data using a single representative point in the bbox.
 
     The SoilGrids v2.0 API is point-based (lat/lon), not bbox-based.
@@ -249,14 +243,8 @@ def fetch_soilgrids_bbox(properties, bbox, depths=None, verbose: bool = False):
     if depths:
         params["depth"] = ",".join(depths)
 
-    if verbose:
-        print(f"[verbose] GET {PROFILES_ENDPOINT} params={params} (timeout=120s)",
-              file=sys.stderr)
     try:
         resp = requests.get(PROFILES_ENDPOINT, params=params, timeout=120)
-        if verbose:
-            print(f"[verbose] <- HTTP {resp.status_code} ({len(resp.content)} bytes)",
-                  file=sys.stderr)
         resp.raise_for_status()
     except requests.exceptions.Timeout:
         raise RuntimeError("Request timed out. Try a smaller bbox or fewer properties.")
@@ -295,12 +283,6 @@ def write_json(records, output_path, metadata=None):
 # ── CLI Commands ───────────────────────────────────────────────────────────────
 def cmd_query(args):
     """Query soil property data."""
-    verbose = bool(getattr(args, "verbose", False))
-
-    def _vlog(msg: str) -> None:
-        if verbose:
-            print(f"[verbose] {msg}", file=sys.stderr)
-
     # Expand preset (overrides --property when set)
     if args.preset:
         if args.preset not in PRESETS:
@@ -318,7 +300,6 @@ def cmd_query(args):
     else:
         properties = [p.strip() for p in args.property.split(",")]
         depths = validate_depths(args.depth) if args.depth else None
-    _vlog(f"resolved: properties={properties} depths={depths} preset={args.preset}")
 
     # Resolve spatial input
     place_info = None
@@ -331,12 +312,10 @@ def cmd_query(args):
     elif args.lat is not None and args.lon is not None:
         validate_latlon(args.lat, args.lon)
         lat, lon = args.lat, args.lon
-        _vlog(f"using --lat={lat} --lon={lon}")
     elif args.bbox:
         west, south, east, north = validate_bbox(args.bbox)
         bbox = (west, south, east, north)
         print(f"Querying SoilGrids for bbox: west={west}, south={south}, east={east}, north={north}")
-        _vlog(f"bbox centre -> lat={(south+north)/2}, lon={(west+east)/2}")
     else:
         raise ValueError("Provide one of --place / --lat+--lon / --bbox")
 
@@ -344,7 +323,7 @@ def cmd_query(args):
     if bbox:
         if depths:
             print(f"  Depths: {', '.join(depths)}")
-        data = fetch_soilgrids_bbox(properties, bbox, depths, verbose=verbose)
+        data = fetch_soilgrids_bbox(properties, bbox, depths)
         records = parse_point_response(data, properties,
                                        (bbox[1] + bbox[3]) / 2,
                                        (bbox[0] + bbox[2]) / 2)
@@ -353,9 +332,8 @@ def cmd_query(args):
         print(f"  Location: ({lat:.4f}, {lon:.4f})")
         if depths:
             print(f"  Depths: {', '.join(depths)}")
-        data = fetch_soilgrids_point(properties, lat, lon, depths, verbose=verbose)
+        data = fetch_soilgrids_point(properties, lat, lon, depths)
         records = parse_point_response(data, properties, lat, lon)
-    _vlog(f"parsed {len(records)} record(s)")
 
     if not records:
         print("No data returned.")
@@ -379,7 +357,6 @@ def cmd_query(args):
         write_json(records, output_path, metadata)
     else:
         write_csv(records, output_path)
-    _vlog(f"wrote {len(records)} record(s) to {output_path} (format={args.format})")
 
     if args.qa:
         qa = {
@@ -403,7 +380,6 @@ def cmd_query(args):
         with open(qa_path, "w", encoding="utf-8") as f:
             json.dump(qa, f, ensure_ascii=False, indent=2)
         print(f"QA: {qa_path}  ({qa['record_count']} rows, {qa['property_count']} properties)")
-        _vlog(f"wrote QA summary to {qa_path}")
 
 
 def cmd_list_presets(args):
@@ -482,9 +458,6 @@ Examples:
                    help="Output format (default: csv)")
     q.add_argument("--qa", action="store_true",
                    help="Write a QA summary JSON next to the output")
-    q.add_argument("--verbose", "-v", action="store_true",
-                   help="Print detailed progress to stderr (URL, response codes, "
-                        "byte counts, record counts, etc.)")
     q.set_defaults(func=cmd_query)
 
     # List properties command
@@ -506,7 +479,7 @@ Examples:
         sys.exit(1)
 
     try:
-        return args.func(args)
+        args.func(args)
     except ValueError as e:
         print(f"Validation error: {e}")
         sys.exit(1)
@@ -518,4 +491,4 @@ Examples:
         sys.exit(130)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
