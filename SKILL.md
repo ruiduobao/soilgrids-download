@@ -1,13 +1,6 @@
 ---
-description: 'Download ISRIC SoilGrids soil property data including pH, organic carbon,
-  sand/silt/clay
-
-  fractions, bulk density, and cation exchange capacity. Supports point queries
-
-  (and bbox center-point queries) across 6 standard depth layers at 250m resolution.
-
-  '
 name: soilgrids-download
+description: 'Download ISRIC SoilGrids soil property data including pH, organic carbon, description: 'Download ISRIC SoilGrids soil property data including pH, organic carbon, sand/silt/clay  fractions, bulk density, and cation exchange capacity. Supports point queries  (and bbox center-point queries) across 6 standard depth layers at 250m resolution.  '
 ---
 
 # SoilGrids Data Download
